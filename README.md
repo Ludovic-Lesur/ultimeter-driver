@@ -24,3 +24,21 @@ Here is the versions compatibility table:
 | `ULTIMETER_DRIVER_TIMER_ERROR_BASE_LAST` | `<value>` | Last error base of the low level timer driver. |
 | `ULTIMETER_DRIVER_WIND_SPEED_SAMPLING_TIME_SECONDS` | `<value>` | Time interval in seconds where the wind speed is evaluated. |
 | `ULTIMETER_DRIVER_WIND_DIRECTION_SAMPLING_PERIOD_SECONDS` | `<value>` | Wind direction reading period in seconds. |
+
+# Build
+
+A static library can be compiled by command line with `cmake`.
+
+```bash
+mkdir build
+cd build
+cmake -DCMAKE_TOOLCHAIN_FILE="<toolchain_file_path>" \
+      -DTOOLCHAIN_PATH="<arm-none-eabi-gcc_path>" \
+      -DTYPES_PATH="<types_file_path>" \
+      -DEMBEDDED_UTILS_PATH="<embedded-utils_path>" \
+      -DULTIMETER_DRIVER_TIMER_ERROR_BASE_LAST=0 \
+      -DULTIMETER_DRIVER_WIND_SPEED_SAMPLING_TIME_SECONDS=1 \
+      -DULTIMETER_DRIVER_WIND_DIRECTION_SAMPLING_PERIOD_SECONDS=10 \
+      -G "Unix Makefiles" ..
+make all
+```
