@@ -20,7 +20,7 @@
 /*******************************************************************/
 ULTIMETER_status_t __attribute__((weak)) ULTIMETER_HW_init(ULTIMETER_HW_configuration_t* configuration) {
     // Local variables.
-    ULTIMETER_status_t status = ULTIMETER_SUCCESS;
+    ULTIMETER_status_t status = ULTIMETER_ERROR_HW_FUNCTION_NOT_IMPLEMENTED;
     /* To be implemented */
     UNUSED(configuration);
     return status;
@@ -29,7 +29,7 @@ ULTIMETER_status_t __attribute__((weak)) ULTIMETER_HW_init(ULTIMETER_HW_configur
 /*******************************************************************/
 ULTIMETER_status_t __attribute__((weak)) ULTIMETER_HW_de_init(void) {
     // Local variables.
-    ULTIMETER_status_t status = ULTIMETER_SUCCESS;
+    ULTIMETER_status_t status = ULTIMETER_ERROR_HW_FUNCTION_NOT_IMPLEMENTED;
     /* To be implemented */
     return status;
 }
@@ -37,7 +37,7 @@ ULTIMETER_status_t __attribute__((weak)) ULTIMETER_HW_de_init(void) {
 /*******************************************************************/
 ULTIMETER_status_t __attribute__((weak)) ULTIMETER_HW_set_wind_speed_direction_interrupts(uint8_t enable) {
     // Local variables.
-    ULTIMETER_status_t status = ULTIMETER_SUCCESS;
+    ULTIMETER_status_t status = ULTIMETER_ERROR_HW_FUNCTION_NOT_IMPLEMENTED;
     /* To be implemented */
     UNUSED(enable);
     return status;
@@ -46,7 +46,7 @@ ULTIMETER_status_t __attribute__((weak)) ULTIMETER_HW_set_wind_speed_direction_i
 /*******************************************************************/
 ULTIMETER_status_t __attribute__((weak)) ULTIMETER_HW_timer_start(void) {
     // Local variables.
-    ULTIMETER_status_t status = ULTIMETER_SUCCESS;
+    ULTIMETER_status_t status = ULTIMETER_ERROR_HW_FUNCTION_NOT_IMPLEMENTED;
     /* To be implemented */
     return status;
 }
@@ -54,7 +54,7 @@ ULTIMETER_status_t __attribute__((weak)) ULTIMETER_HW_timer_start(void) {
 /*******************************************************************/
 ULTIMETER_status_t __attribute__((weak)) ULTIMETER_HW_timer_stop(void) {
     // Local variables.
-    ULTIMETER_status_t status = ULTIMETER_SUCCESS;
+    ULTIMETER_status_t status = ULTIMETER_ERROR_HW_FUNCTION_NOT_IMPLEMENTED;
     /* To be implemented */
     return status;
 }
