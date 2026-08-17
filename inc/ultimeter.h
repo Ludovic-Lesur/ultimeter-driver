@@ -73,13 +73,13 @@ ULTIMETER_status_t ULTIMETER_init(ULTIMETER_process_cb_t process_callback);
 ULTIMETER_status_t ULTIMETER_de_init(void);
 
 /*!******************************************************************
- * \fn ULTIMETER_status_t ULTIMETER_set_wind_measurement(uint8_t enable)
- * \brief Control wind speed and direction measurements.
- * \param[in]   enable: Disable (0) or enable (otherwise) wind speed and direction measurements.
+ * \fn void ULTIMETER_reset_measurements(void);
+ * \brief Reset wind and rainfall measurements.
+ * \param[in]   none
  * \param[out]  none
- * \retval      Function execution status.
+ * \retval      none
  *******************************************************************/
-ULTIMETER_status_t ULTIMETER_set_wind_measurement(uint8_t enable);
+void ULTIMETER_reset_measurements(void);
 
 /*!******************************************************************
  * \fn ULTIMETER_status_t ULTIMETER_process(void)
@@ -89,6 +89,15 @@ ULTIMETER_status_t ULTIMETER_set_wind_measurement(uint8_t enable);
  * \retval      Function execution status.
  *******************************************************************/
 ULTIMETER_status_t ULTIMETER_process(void);
+
+/*!******************************************************************
+ * \fn ULTIMETER_status_t ULTIMETER_set_wind_measurement(uint8_t enable)
+ * \brief Control wind speed and direction measurements.
+ * \param[in]   enable: Disable (0) or enable (otherwise) wind speed and direction measurements.
+ * \param[out]  none
+ * \retval      Function execution status.
+ *******************************************************************/
+ULTIMETER_status_t ULTIMETER_set_wind_measurement(uint8_t enable);
 
 /*!******************************************************************
  * \fn ULTIMETER_status_t ULTIMETER_get_wind_speed(int32_t* average_speed_mh, int32_t* peak_speed_mh)
@@ -109,15 +118,6 @@ ULTIMETER_status_t ULTIMETER_get_wind_speed(int32_t* average_speed_mh, int32_t* 
  * \retval      Function execution status.
  *******************************************************************/
 ULTIMETER_status_t ULTIMETER_get_wind_direction(int32_t* average_direction_degrees, ULTIMETER_wind_direction_status_t* direction_status);
-
-/*!******************************************************************
- * \fn void ULTIMETER_reset_measurements(void);
- * \brief Reset wind and rainfall measurements.
- * \param[in]   none
- * \param[out]  none
- * \retval      none
- *******************************************************************/
-void ULTIMETER_reset_measurements(void);
 
 /*******************************************************************/
 #define ULTIMETER_exit_error(base) { ERROR_check_exit(ultimeter_status, ULTIMETER_SUCCESS, base) }
