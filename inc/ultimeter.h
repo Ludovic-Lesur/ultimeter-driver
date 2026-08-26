@@ -46,22 +46,16 @@ typedef enum {
     ULTIMETER_WIND_DIRECTION_STATUS_LAST
 } ULTIMETER_wind_direction_status_t;
 
-/*!******************************************************************
- * \fn ULTIMETER_process_cb_t
- * \brief ULTIMETER driver process callback.
- *******************************************************************/
-typedef void (*ULTIMETER_process_cb_t)(void);
-
 /*** ULTIMETER functions ***/
 
 /*!******************************************************************
- * \fn ULTIMETER_status_t ULTIMETER_init(ULTIMETER_process_cb_t process_callback)
+ * \fn ULTIMETER_status_t ULTIMETER_init(void)
  * \brief Init ULTIMETER driver.
- * \param[in]   process_callback: Function which will be called when the ULTIMETER driver has to be processed.
+ * \param[in]   none
  * \param[out]  none
  * \retval      Function execution status.
  *******************************************************************/
-ULTIMETER_status_t ULTIMETER_init(ULTIMETER_process_cb_t process_callback);
+ULTIMETER_status_t ULTIMETER_init(void);
 
 /*!******************************************************************
  * \fn ULTIMETER_status_t ULTIMETER_de_init(void)
@@ -82,15 +76,6 @@ ULTIMETER_status_t ULTIMETER_de_init(void);
 void ULTIMETER_reset_measurements(void);
 
 /*!******************************************************************
- * \fn ULTIMETER_status_t ULTIMETER_process(void)
- * \brief ULTIMETER driver process function.
- * \param[in]   none
- * \param[out]  none
- * \retval      Function execution status.
- *******************************************************************/
-ULTIMETER_status_t ULTIMETER_process(void);
-
-/*!******************************************************************
  * \fn ULTIMETER_status_t ULTIMETER_set_wind_measurement(uint8_t enable)
  * \brief Control wind speed and direction measurements.
  * \param[in]   enable: Disable (0) or enable (otherwise) wind speed and direction measurements.
@@ -100,14 +85,14 @@ ULTIMETER_status_t ULTIMETER_process(void);
 ULTIMETER_status_t ULTIMETER_set_wind_measurement(uint8_t enable);
 
 /*!******************************************************************
- * \fn ULTIMETER_status_t ULTIMETER_get_wind_speed(int32_t* average_speed_mh, int32_t* peak_speed_mh)
+ * \fn ULTIMETER_status_t ULTIMETER_get_wind_speed(int32_t* average_speed_tenth_kmh, int32_t* peak_speed_tenth_kmh)
  * \brief Read wind speeds.
  * \param[in]   none
- * \param[out]  average_speed_mh: Pointer to integer that will contain the average wind speed since last reset in m/h.
- * \param[out]  peak_speed_mh: Pointer to integer that will contain the peak wind speed since last reset in m/h.
+ * \param[out]  average_speed_tenth_kmh: Pointer to integer that will contain the average wind speed since last reset in tenth of km/h.
+ * \param[out]  peak_speed_tenth_kmh: Pointer to integer that will contain the peak wind speed since last reset in tenth of km/h.
  * \retval      Function execution status.
  *******************************************************************/
-ULTIMETER_status_t ULTIMETER_get_wind_speed(int32_t* average_speed_mh, int32_t* peak_speed_mh);
+ULTIMETER_status_t ULTIMETER_get_wind_speed(int32_t* average_speed_tenth_kmh, int32_t* peak_speed_tenth_kmh);
 
 /*!******************************************************************
  * \fn ULTIMETER_status_t ULTIMETER_get_wind_direction(int32_t* average_direction_degrees, ULTIMETER_wind_direction_status_t* direction_status)

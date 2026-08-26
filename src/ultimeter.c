@@ -19,9 +19,12 @@
 
 /*** ULTIMETER local macros ***/
 
-#define ULTIMETER_WIND_SPEED_1HZ_TO_MH          5400
+#define ULTIMETER_WIND_SPEED_1HZ_TO_TENTH_KMH       54
+#define ULTIMETER_WIND_SPEED_ERROR_VALUE            0xFFFFFFFF
 
-#define ULTIMETER_WIND_DIRECTION_ERROR_VALUE    0xFFFFFFFF
+#define ULTIMETER_WIND_DIRECTION_SCALING_THRESHOLD  1000000000
+
+#define ULTIMETER_WIND_WATCHDOG_SECONDS             12
 
 /*** ULTIMETER local structures ***/
 
@@ -29,84 +32,128 @@
 typedef union {
     uint8_t all;
     struct {
-        unsigned tick_second_irq :1;
         unsigned wind_direction_irq :1;
         unsigned wind_measurement_enable :1;
-    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));;
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } ULTIMETER_flags_t;
 
 /*******************************************************************/
 typedef struct {
     // State machine.
-    ULTIMETER_process_cb_t process_callback;
-    volatile ULTIMETER_flags_t flags;
+    ULTIMETER_flags_t flags;
+    uint8_t wind_watchdog_seconds_count;
     // Wind speed.
-    volatile uint32_t wind_speed_counter_start;
-    volatile uint32_t wind_speed_counter_stop;
-    volatile uint8_t wind_speed_seconds_count;
-    volatile uint32_t wind_speed_edge_count;
+    uint32_t wind_speed_counter_start;
+    uint32_t wind_speed_counter_stop;
+    uint32_t wind_speed_tenth_kmh_sum;
+    uint32_t wind_speed_tenth_kmh_peak;
+    uint32_t wind_speed_tenth_kmh_last;
     uint32_t wind_speed_data_count;
-    uint32_t wind_speed_mh_average;
-    uint32_t wind_speed_mh_peak;
     // Wind direction.
-    volatile uint32_t wind_direction_counter;
-    volatile uint32_t wind_direction_degrees;
-    volatile uint32_t wind_direction_seconds_count;
+    uint32_t wind_direction_counter;
     int32_t wind_direction_trend_point_x;
     int32_t wind_direction_trend_point_y;
 } ULTIMETER_context_t;
 
 /*** ULTIMETER local global variables ***/
 
-static ULTIMETER_context_t ultimeter_ctx;
+static volatile ULTIMETER_context_t ultimeter_ctx;
 
 /*** ULTIMETER local functions ***/
 
 /*******************************************************************/
+static void _ULTIMETER_reset_counters(void) {
+    // Watchdog.
+    ultimeter_ctx.wind_watchdog_seconds_count = 0;
+    // Wind speed.
+    ultimeter_ctx.wind_speed_counter_start = 0xFFFFFFFF;
+    ultimeter_ctx.wind_speed_counter_stop = 0;
+    ultimeter_ctx.wind_speed_tenth_kmh_last = 0;
+    // Wind direction.
+    ultimeter_ctx.wind_direction_counter = 0;
+}
+
+/*******************************************************************/
 static void _ULTIMETER_wind_speed_edge_callback(void) {
     // Local variables.
-    uint32_t wind_direction_period = 0;
-    uint32_t wind_direction_duty_cycle = 0;
-    // Wind speed.
-    ultimeter_ctx.wind_speed_edge_count++;
-    // Capture period.
-    ultimeter_ctx.wind_speed_counter_stop = ULTIMETER_HW_timer_get_counter();
-    // Reset direction.
-    ultimeter_ctx.wind_direction_degrees = ULTIMETER_WIND_DIRECTION_ERROR_VALUE;
-    // Check counters.
-    if ((ultimeter_ctx.flags.wind_direction_irq != 0) &&
-        (ultimeter_ctx.wind_speed_counter_start < ultimeter_ctx.wind_speed_counter_stop) &&
-        (ultimeter_ctx.wind_direction_counter >= ultimeter_ctx.wind_speed_counter_start) &&
-        (ultimeter_ctx.wind_direction_counter <= ultimeter_ctx.wind_speed_counter_stop)) {
-        // Compute wind direction.
-        wind_direction_period = (ultimeter_ctx.wind_speed_counter_stop - ultimeter_ctx.wind_speed_counter_start);
-        wind_direction_duty_cycle = (ultimeter_ctx.wind_direction_counter - ultimeter_ctx.wind_speed_counter_start);
-        // Compute wind direction.
-        ultimeter_ctx.wind_direction_degrees = (((wind_direction_duty_cycle * MATH_2_PI_DEGREES) / (wind_direction_period)) % MATH_2_PI_DEGREES);
+    uint32_t wind_speed_counter_delta = 0;
+    uint32_t wind_speed_tenth_kmh = 0;
+    uint32_t wind_direction_degrees = 0;
+    // Check if measurements are enabled.
+    if (ultimeter_ctx.flags.wind_measurement_enable != 0) {
+        // Clear watchdog.
+        ultimeter_ctx.wind_watchdog_seconds_count = 0;
+        // Capture period.
+        ultimeter_ctx.wind_speed_counter_stop = ULTIMETER_HW_timer_get_counter();
+        // Check counters.
+        if (ultimeter_ctx.wind_speed_counter_start < ultimeter_ctx.wind_speed_counter_stop) {
+            // Compute delta.
+            wind_speed_counter_delta = (ultimeter_ctx.wind_speed_counter_stop - ultimeter_ctx.wind_speed_counter_start);
+            // Compute speed.
+            wind_speed_tenth_kmh = (ULTIMETER_WIND_SPEED_1HZ_TO_TENTH_KMH * 1000000) / (wind_speed_counter_delta * ULTIMETER_DRIVER_TIMER_STEP_US);
+            // Update peak value.
+            if (wind_speed_tenth_kmh > ultimeter_ctx.wind_speed_tenth_kmh_peak) {
+                ultimeter_ctx.wind_speed_tenth_kmh_peak = wind_speed_tenth_kmh;
+            }
+            // Update last value.
+            ultimeter_ctx.wind_speed_tenth_kmh_last = wind_speed_tenth_kmh;
+            // Check if direction IRQ occurred between the two last speed IRQ.
+            if ((ultimeter_ctx.flags.wind_direction_irq != 0) &&
+                (ultimeter_ctx.wind_direction_counter >= ultimeter_ctx.wind_speed_counter_start) &&
+                (ultimeter_ctx.wind_direction_counter <= ultimeter_ctx.wind_speed_counter_stop)) {
+                // Compute wind direction.
+                wind_direction_degrees = ((((ultimeter_ctx.wind_direction_counter - ultimeter_ctx.wind_speed_counter_start) * MATH_2_PI_DEGREES) / (wind_speed_counter_delta)) % MATH_2_PI_DEGREES);
+                // Compute direction only if there is wind.
+                if (wind_speed_tenth_kmh > 0) {
+                    // Add new wind direction vector weighted by speed.
+                    ultimeter_ctx.wind_direction_trend_point_x += (((int32_t) wind_speed_tenth_kmh) * ((int32_t) MATH_COS_TABLE[wind_direction_degrees]));
+                    ultimeter_ctx.wind_direction_trend_point_y += (((int32_t) wind_speed_tenth_kmh) * ((int32_t) MATH_SIN_TABLE[wind_direction_degrees]));
+                    // Scaling to avoid overflow.
+                    if ((ultimeter_ctx.wind_direction_trend_point_x > (+ULTIMETER_WIND_DIRECTION_SCALING_THRESHOLD)) ||
+                        (ultimeter_ctx.wind_direction_trend_point_x < (-ULTIMETER_WIND_DIRECTION_SCALING_THRESHOLD)) ||
+                        (ultimeter_ctx.wind_direction_trend_point_y > (+ULTIMETER_WIND_DIRECTION_SCALING_THRESHOLD)) ||
+                        (ultimeter_ctx.wind_direction_trend_point_y < (-ULTIMETER_WIND_DIRECTION_SCALING_THRESHOLD)))
+                    {
+                        ultimeter_ctx.wind_direction_trend_point_x = (ultimeter_ctx.wind_direction_trend_point_x / 2);
+                        ultimeter_ctx.wind_direction_trend_point_y = (ultimeter_ctx.wind_direction_trend_point_y / 2);
+                    }
+                }
+            }
+        }
+        // Start new period.
+        ultimeter_ctx.flags.wind_direction_irq = 0;
+        ultimeter_ctx.wind_speed_counter_start = ultimeter_ctx.wind_speed_counter_stop;
     }
-    // Start new period.
-    ultimeter_ctx.flags.wind_direction_irq = 0;
-    ultimeter_ctx.wind_speed_counter_start = ultimeter_ctx.wind_speed_counter_stop;
 }
 
 /*******************************************************************/
 static void _ULTIMETER_wind_direction_edge_callback(void) {
-    // Set flag and store counter.
-    ultimeter_ctx.flags.wind_direction_irq = 1;
-    ultimeter_ctx.wind_direction_counter = ULTIMETER_HW_timer_get_counter();
+    // Check if measurements are enabled.
+    if (ultimeter_ctx.flags.wind_measurement_enable != 0) {
+        // Set flag and store counter.
+        ultimeter_ctx.flags.wind_direction_irq = 1;
+        ultimeter_ctx.wind_direction_counter = ULTIMETER_HW_timer_get_counter();
+    }
 }
 
 /*******************************************************************/
 static void _ULTIMETER_tick_second_callback(void) {
-    // Check enable flag.
+    // Check if measurements are enabled.
     if (ultimeter_ctx.flags.wind_measurement_enable != 0) {
-        // Update local flags.
-        ultimeter_ctx.wind_speed_seconds_count++;
-        ultimeter_ctx.wind_direction_seconds_count++;
-        ultimeter_ctx.flags.tick_second_irq = 1;
-        // Ask for processing.
-        if (ultimeter_ctx.process_callback != NULL) {
-            ultimeter_ctx.process_callback();
+        // Manage watchdog timer.
+        ultimeter_ctx.wind_watchdog_seconds_count++;
+        // Check period.
+        if (ultimeter_ctx.wind_watchdog_seconds_count >= ULTIMETER_WIND_WATCHDOG_SECONDS) {
+            // Reset counters.
+            _ULTIMETER_reset_counters();
+        }
+        // Compute average wind speed.
+        if (ultimeter_ctx.wind_speed_tenth_kmh_last != ULTIMETER_WIND_SPEED_ERROR_VALUE) {
+            // Update average value.
+            ultimeter_ctx.wind_speed_tenth_kmh_sum += ultimeter_ctx.wind_speed_tenth_kmh_last;
+            ultimeter_ctx.wind_speed_data_count++;
+            // Reset last value to error.
+            ultimeter_ctx.wind_speed_tenth_kmh_last = ULTIMETER_WIND_SPEED_ERROR_VALUE;
         }
     }
 }
@@ -114,20 +161,14 @@ static void _ULTIMETER_tick_second_callback(void) {
 /*** ULTIMETER functions ***/
 
 /*******************************************************************/
-ULTIMETER_status_t ULTIMETER_init(ULTIMETER_process_cb_t process_callback) {
+ULTIMETER_status_t ULTIMETER_init(void) {
     // Local variables.
     ULTIMETER_status_t status = ULTIMETER_SUCCESS;
     ULTIMETER_HW_configuration_t hw_config;
+    // Init context.
+    ultimeter_ctx.flags.all = 0;
     // Reset data.
     ULTIMETER_reset_measurements();
-    // Check parameter.
-    if (process_callback == NULL) {
-        status = ULTIMETER_ERROR_NULL_PARAMETER;
-        goto errors;
-    }
-    // Init context.
-    ultimeter_ctx.process_callback = process_callback;
-    ultimeter_ctx.flags.all = 0;
     // Init hardware interface.
     hw_config.wind_speed_edge_irq_callback = &_ULTIMETER_wind_speed_edge_callback;
     hw_config.wind_direction_edge_irq_callback = &_ULTIMETER_wind_direction_edge_callback;
@@ -151,64 +192,16 @@ errors:
 
 /*******************************************************************/
 void ULTIMETER_reset_measurements(void) {
-    // Wind speed.
-    ultimeter_ctx.wind_speed_counter_start = 0;
-    ultimeter_ctx.wind_speed_counter_stop = 0;
-    ultimeter_ctx.wind_speed_seconds_count = 0;
-    ultimeter_ctx.wind_speed_edge_count = 0;
+    // Reset counters.
+    _ULTIMETER_reset_counters();
+    // Reset wind speed.
     ultimeter_ctx.wind_speed_data_count = 0;
-    ultimeter_ctx.wind_speed_mh_average = 0;
-    ultimeter_ctx.wind_speed_mh_peak = 0;
-    // Wind direction.
-    ultimeter_ctx.wind_direction_counter = 0;
-    ultimeter_ctx.wind_direction_degrees = 0;
-    ultimeter_ctx.wind_direction_seconds_count = 0;
+    ultimeter_ctx.wind_speed_tenth_kmh_sum = 0;
+    ultimeter_ctx.wind_speed_tenth_kmh_peak = 0;
+    ultimeter_ctx.wind_speed_tenth_kmh_last = 0;
+    // Reset wind direction.
     ultimeter_ctx.wind_direction_trend_point_x = 0;
     ultimeter_ctx.wind_direction_trend_point_y = 0;
-}
-
-/*******************************************************************/
-ULTIMETER_status_t ULTIMETER_process(void) {
-    // Local variables.
-    ULTIMETER_status_t status = ULTIMETER_SUCCESS;
-    uint32_t wind_speed_mh = 0;
-    // Check flag.
-    if (ultimeter_ctx.flags.tick_second_irq == 0) goto errors;
-    // Clear flag.
-    ultimeter_ctx.flags.tick_second_irq = 0;
-    // Update wind speed if period is reached.
-    if (ultimeter_ctx.wind_speed_seconds_count >= ULTIMETER_DRIVER_WIND_SPEED_SAMPLING_TIME_SECONDS) {
-        // Reset seconds counter.
-        ultimeter_ctx.wind_speed_seconds_count = 0;
-        // Compute new value.
-        wind_speed_mh = (ultimeter_ctx.wind_speed_edge_count * ULTIMETER_WIND_SPEED_1HZ_TO_MH) / (ULTIMETER_DRIVER_WIND_SPEED_SAMPLING_TIME_SECONDS);
-        ultimeter_ctx.wind_speed_edge_count = 0;
-        // Update peak value if required.
-        if (wind_speed_mh > ultimeter_ctx.wind_speed_mh_peak) {
-            ultimeter_ctx.wind_speed_mh_peak = wind_speed_mh;
-        }
-        // Update average value.
-        MATH_rolling_mean(ultimeter_ctx.wind_speed_mh_average, ultimeter_ctx.wind_speed_data_count, wind_speed_mh, uint32_t);
-        // Compute direction only if there is wind.
-        if (((wind_speed_mh / 1000) > 0) && (ultimeter_ctx.wind_direction_degrees != ULTIMETER_WIND_DIRECTION_ERROR_VALUE)) {
-            // Add new wind direction vector weighted by speed.
-            ultimeter_ctx.wind_direction_trend_point_x += ((int32_t) (wind_speed_mh / 1000)) * ((int32_t) MATH_COS_TABLE[ultimeter_ctx.wind_direction_degrees]);
-            ultimeter_ctx.wind_direction_trend_point_y += ((int32_t) (wind_speed_mh / 1000)) * ((int32_t) MATH_SIN_TABLE[ultimeter_ctx.wind_direction_degrees]);
-        }
-    }
-    // Update wind direction if period is reached.
-    if (ultimeter_ctx.wind_direction_seconds_count >= ULTIMETER_DRIVER_WIND_DIRECTION_SAMPLING_PERIOD_SECONDS) {
-        // Reset seconds counter.
-        ultimeter_ctx.wind_direction_seconds_count = 0;
-        // Compute direction only if there is wind.
-        if (((wind_speed_mh / 1000) > 0) && (ultimeter_ctx.wind_direction_degrees != ULTIMETER_WIND_DIRECTION_ERROR_VALUE)) {
-            // Add new wind direction vector weighted by speed.
-            ultimeter_ctx.wind_direction_trend_point_x += ((int32_t) (wind_speed_mh / 1000)) * ((int32_t) MATH_COS_TABLE[ultimeter_ctx.wind_direction_degrees]);
-            ultimeter_ctx.wind_direction_trend_point_y += ((int32_t) (wind_speed_mh / 1000)) * ((int32_t) MATH_SIN_TABLE[ultimeter_ctx.wind_direction_degrees]);
-        }
-    }
-errors:
-    return status;
 }
 
 /*******************************************************************/
@@ -219,38 +212,34 @@ ULTIMETER_status_t ULTIMETER_set_wind_measurement(uint8_t enable) {
     if ((enable == 0) && (ultimeter_ctx.flags.wind_measurement_enable != 0)) {
         // Stop timer.
         ULTIMETER_HW_timer_stop();
-        // Reset counters.
-        ultimeter_ctx.flags.tick_second_irq = 0;
-        ultimeter_ctx.wind_speed_seconds_count = 0;
-        ultimeter_ctx.wind_direction_seconds_count = 0;
-        // Update local flag.
-        ultimeter_ctx.flags.wind_measurement_enable = 0;
     }
     if ((enable != 0) && (ultimeter_ctx.flags.wind_measurement_enable == 0)) {
+        // Reset counters.
+        _ULTIMETER_reset_counters();
         // Start timer.
         status = ULTIMETER_HW_timer_start();
         if (status != ULTIMETER_SUCCESS) goto errors;
-        // Update local flag.
-        ultimeter_ctx.flags.wind_measurement_enable = 1;
     }
     // Set interrupt state.
     status = ULTIMETER_HW_set_wind_speed_direction_interrupts(enable);
     if (status != ULTIMETER_SUCCESS) goto errors;
+    // Update internal flag.
+    ultimeter_ctx.flags.wind_measurement_enable = (enable == 0) ? 0 : 1;
 errors:
     return status;
 }
 
 /*******************************************************************/
-ULTIMETER_status_t ULTIMETER_get_wind_speed(int32_t* average_speed_mh, int32_t* peak_speed_mh) {
+ULTIMETER_status_t ULTIMETER_get_wind_speed(int32_t* average_speed_tenth_kmh, int32_t* peak_speed_tenth_kmh) {
     // Local variables.
     ULTIMETER_status_t status = ULTIMETER_SUCCESS;
     // Check parameters.
-    if ((average_speed_mh == NULL) || (peak_speed_mh == NULL)) {
+    if ((average_speed_tenth_kmh == NULL) || (peak_speed_tenth_kmh == NULL)) {
         status = ULTIMETER_ERROR_NULL_PARAMETER;
         goto errors;
     }
-    (*average_speed_mh) = (int32_t) (ultimeter_ctx.wind_speed_mh_average);
-    (*peak_speed_mh) = (int32_t) (ultimeter_ctx.wind_speed_mh_peak);
+    (*average_speed_tenth_kmh) = (int32_t) (ultimeter_ctx.wind_speed_tenth_kmh_sum / ultimeter_ctx.wind_speed_data_count);
+    (*peak_speed_tenth_kmh) = (int32_t) (ultimeter_ctx.wind_speed_tenth_kmh_peak);
 errors:
     return status;
 }
