@@ -33,7 +33,6 @@ if(${BUILD_MODE} STREQUAL STATIC)
     add_compilation_flag(ULTIMETER_DRIVERS_DISABLE "Disable the ULTIMETER driver." OFF)
     add_compilation_flag(ULTIMETER_DRIVER_TIMER_ERROR_BASE_LAST "Last error base of the low level timer driver." 0)
     add_compilation_flag(ULTIMETER_DRIVER_TIMER_STEP_US "Timer counter step in microseconds." 1000)
-    add_compilation_flag(ULTIMETER_DRIVER_WIND_DIRECTION_SAMPLING_PERIOD_SECONDS "Wind direction reading period in seconds." 10)
     
     # Remove OFF flags from list and keep flags set to value 0.
     foreach(FLAG ${COMPILATION_FLAGS_LIST})

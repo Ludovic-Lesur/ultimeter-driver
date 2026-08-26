@@ -30,7 +30,6 @@ Here is the versions compatibility table:
 | `ULTIMETER_DRIVER_DISABLE` | `defined` / `undefined` | Disable the ULTIMETER driver. |
 | `ULTIMETER_DRIVER_TIMER_ERROR_BASE_LAST` | `<value>` | Last error base of the low level timer driver. |
 | `ULTIMETER_DRIVER_TIMER_STEP_US` | `<value>` | Timer counter step in microseconds. |
-| `ULTIMETER_DRIVER_WIND_DIRECTION_SAMPLING_PERIOD_SECONDS` | `<value>` | Wind direction reading period in seconds. |
 
 # Build
 
@@ -45,7 +44,6 @@ cmake -DCMAKE_TOOLCHAIN_FILE="<toolchain_file_path>" \
       -DEMBEDDED_UTILS_PATH="<embedded-utils_path>" \
       -DULTIMETER_DRIVER_TIMER_ERROR_BASE_LAST=0 \
       -DULTIMETER_DRIVER_TIMER_STEP_US=1000 \
-      -DULTIMETER_DRIVER_WIND_DIRECTION_SAMPLING_PERIOD_SECONDS=10 \
       -G "Unix Makefiles" ..
 make all
 ```
