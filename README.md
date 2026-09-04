@@ -13,14 +13,15 @@ Here is the versions compatibility table:
 
 | **ultimeter-driver** | **embedded-utils** |
 |:---:|:---:|
+| [sw2.0](https://github.com/Ludovic-Lesur/ultimeter-driver/releases/tag/sw2.0) | >= [sw7.0](https://github.com/Ludovic-Lesur/embedded-utils/releases/tag/sw7.0) |
 | [sw1.4](https://github.com/Ludovic-Lesur/ultimeter-driver/releases/tag/sw1.4) | >= [sw7.0](https://github.com/Ludovic-Lesur/embedded-utils/releases/tag/sw7.0) |
 | [sw1.3](https://github.com/Ludovic-Lesur/ultimeter-driver/releases/tag/sw1.3) | >= [sw7.0](https://github.com/Ludovic-Lesur/embedded-utils/releases/tag/sw7.0) |
 | [sw1.2](https://github.com/Ludovic-Lesur/ultimeter-driver/releases/tag/sw1.2) | >= [sw7.0](https://github.com/Ludovic-Lesur/embedded-utils/releases/tag/sw7.0) |
 | [sw1.1](https://github.com/Ludovic-Lesur/ultimeter-driver/releases/tag/sw1.1) | >= [sw7.0](https://github.com/Ludovic-Lesur/embedded-utils/releases/tag/sw7.0) |
 | [sw1.0](https://github.com/Ludovic-Lesur/ultimeter-driver/releases/tag/sw1.0) | >= [sw7.0](https://github.com/Ludovic-Lesur/embedded-utils/releases/tag/sw7.0) |
 
-> [!NOTE]
-> The low level timer must have a minimum period of 13 seconds, the recommended configuration is more than 60 seconds with 1ms step. Once started, it is advised to keep the timer running with its natural overflow, to ensure a good measurements continuity (the overflow event is internally managed by the driver).
+> [!WARNING]
+> The low level timer must have a minimum period of 13 seconds, the recommended configuration is more than 30s with a 500µs step. Once started, it is advised to keep the timer running with its natural overflow, to ensure a good measurements continuity (the overflow event is internally managed by the driver).
 
 # Compilation flags
 
