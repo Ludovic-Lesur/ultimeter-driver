@@ -13,6 +13,7 @@ Here is the versions compatibility table:
 
 | **ultimeter-driver** | **embedded-utils** |
 |:---:|:---:|
+| [sw2.2](https://github.com/Ludovic-Lesur/ultimeter-driver/releases/tag/sw2.2) | >= [sw7.0](https://github.com/Ludovic-Lesur/embedded-utils/releases/tag/sw7.0) |
 | [sw2.1](https://github.com/Ludovic-Lesur/ultimeter-driver/releases/tag/sw2.1) | >= [sw7.0](https://github.com/Ludovic-Lesur/embedded-utils/releases/tag/sw7.0) |
 | [sw2.0](https://github.com/Ludovic-Lesur/ultimeter-driver/releases/tag/sw2.0) | >= [sw7.0](https://github.com/Ludovic-Lesur/embedded-utils/releases/tag/sw7.0) |
 | [sw1.4](https://github.com/Ludovic-Lesur/ultimeter-driver/releases/tag/sw1.4) | >= [sw7.0](https://github.com/Ludovic-Lesur/embedded-utils/releases/tag/sw7.0) |
