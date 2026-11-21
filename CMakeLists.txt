@@ -30,7 +30,7 @@ if(${BUILD_MODE} STREQUAL STATIC)
     endmacro()
     
     # Compilation flags.
-    add_compilation_flag(ULTIMETER_DRIVERS_DISABLE "Disable the ULTIMETER driver." OFF)
+    add_compilation_flag(ULTIMETER_DRIVER_DISABLE "Disable the ULTIMETER driver." OFF)
     add_compilation_flag(ULTIMETER_DRIVER_TIMER_ERROR_BASE_LAST "Last error base of the low level timer driver." 0)
     add_compilation_flag(ULTIMETER_DRIVER_TIMER_STEP_US "Timer counter step in microseconds." 1000)
     
